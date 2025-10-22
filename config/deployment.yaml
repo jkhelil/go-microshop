@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-microshop
+  labels:
+    app: go-microshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: go-microshop
+  template:
+    metadata:
+      labels:
+        app: go-microshop
+    spec:
+      containers:
+        - name: api
+          # ko automatically replaces this image reference
+          image: ko://github.com/jkheli/go-microshop/cmd/api
+          ports:
+            - containerPort: 8080
+          env:
+            - name: PORT
+              value: "8080"
