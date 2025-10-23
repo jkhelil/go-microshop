@@ -23,7 +23,6 @@ spec:
       - name: revision
     workspaces:
       - name: source
-      - name: basic-auth
     tasks:
       - name: clone-repository
         params:
@@ -144,3 +143,9 @@ spec:
           workspaces:
             - name: source
               workspace: source
+  workspaces:
+    - name: source
+      emptyDir: {}
+    - name: basic-auth
+      secret:
+        secretName: "{{ git_auth_secret }}"
