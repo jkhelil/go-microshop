@@ -20,7 +20,7 @@ vendor:
 
 build: vendor
 	@echo "🚧 Building $(APP_NAME)..."
-	$(GO) build -o bin/$(APP_NAME) $(APP_PATH)
+	$(GO) build -buildvcs=false -mod=vendor -o bin/$(APP_NAME) $(APP_PATH)
 	@echo "✅ Build complete: bin/$(APP_NAME)"
 
 lint-go:
