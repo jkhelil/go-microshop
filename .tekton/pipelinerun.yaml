@@ -111,7 +111,7 @@ spec:
               - name: CODECOV_TOKEN
                 valueFrom:
                   secretKeyRef:
-                    name: pipelines-as-code-codecov-token
+                    name: go-microshop-codecov-token
                     key: token
               - name: GOCACHE
                 value: $(workspaces.source.path)/go-build-cache/cache
@@ -123,14 +123,12 @@ spec:
                 value: "{{pull_request_number}}"
             workingDir: $(workspaces.source.path)
             script: |
-              #!/usr/bin/env bash
-              set -eux
               ARCH=aarch64
               git config --global --add safe.directory $(workspaces.source.path)
               git fetch -a --tags
               curl -LOs https://uploader.codecov.io/v0.7.3/aarch64/codecov
               chmod +x ./codecov
-              ./codecov -P $GITHUB_PULL_REQUEST_ID -C {{revision}} -v     
+              ./codecov -P $GITHUB_PULL_REQUEST_ID -C {{revision}} -v 
   workspaces:
     - name: source
       volumeClaimTemplate:
