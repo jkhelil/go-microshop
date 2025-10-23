@@ -44,7 +44,7 @@ spec:
             value: task
           resolver: hub
         workspaces:
-          - name: source
+          - name: output
             workspace: source
       - name: build
         runAfter:
