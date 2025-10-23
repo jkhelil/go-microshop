@@ -42,12 +42,10 @@ spec:
             value: "0.10.0"
           - name: kind
             value: task
-          resolver: bundles
+          resolver: hub
         workspaces:
           - name: source
             workspace: source
-          - name: basic-auth
-            workspace: basic-auth
       - name: build
         runAfter:
           - clone-repository
@@ -132,6 +130,7 @@ spec:
                   value: $(workspaces.source.path)/go-build-cache/mod
                 - name: GITHUB_REPOSITORY
                   value: "{{repo_owner}}/{{repo_name}}"
+                - name: GITHUB_PULL_REQUEST_ID
                   value: "{{pull_request_number}}"
               script: |
                 ARCH=aarch64
