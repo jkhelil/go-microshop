@@ -122,7 +122,7 @@ spec:
                 - name: CODECOV_TOKEN
                   valueFrom:
                     secretKeyRef:
-                      name: pipelines-as-code-codecov-token
+                      name: go-microshop-codecov
                       key: token  
                 - name: GOCACHE
                   value: $(workspaces.source.path)/go-build-cache/cache
@@ -144,7 +144,12 @@ spec:
               workspace: source
   workspaces:
     - name: source
-      emptyDir: {}
-    - name: basic-auth
-      secret:
-        secretName: "{{ git_auth_secret }}"
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+
+

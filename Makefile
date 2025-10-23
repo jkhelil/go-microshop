@@ -7,6 +7,7 @@ TAG := latest
 KO := ko
 GO := go
 GOLANGCI_LINT := golangci-lint
+GO_TEST_FLAGS ?= -v -short -cover
 
 .PHONY: all build lint-go test e2e deploy undeploy clean
 
@@ -20,7 +21,7 @@ vendor:
 
 build: vendor
 	@echo "🚧 Building $(APP_NAME)..."
-	$(GO) build -o bin/$(APP_NAME) $(APP_PATH)
+	$(GO) build -buildvcs=false -o bin/$(APP_NAME) $(APP_PATH)
 	@echo "✅ Build complete: bin/$(APP_NAME)"
 
 lint-go:
@@ -32,7 +33,7 @@ lint-go:
 
 test:
 	@echo "🧪 Running unit tests..."
-	$(GO) test -v ./... -short -cover
+	$(GO) test $(GO_TEST_FLAGS) -v ./... -short -cover
 
 e2e:
 	@echo "🌐 Running e2e tests..."
