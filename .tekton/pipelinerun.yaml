@@ -23,7 +23,6 @@ spec:
       - name: revision
     workspaces:
       - name: source
-      - name: basic-auth
     tasks:
       - name: clone-repository
         params:
@@ -31,10 +30,6 @@ spec:
           value: $(params.git-url)
         - name: revision
           value: $(params.revision)
-        - name: ociStorage
-          value: $(params.output-image).git
-        - name: ociArtifactExpiresAfter
-          value: $(params.image-expires-after)
         taskRef:
           params:
           - name: catalog
@@ -51,8 +46,6 @@ spec:
         workspaces:
           - name: source
             workspace: source
-          - name: basic-auth
-            workspace: basic-auth
       - name: build
         image: golang:1.24
         env:
@@ -118,11 +111,8 @@ spec:
           git fetch -a --tags
           curl -LOs https://uploader.codecov.io/v0.7.3/aarch64/codecov
           chmod +x ./codecov
-          ./codecov -P $GITHUB_PULL_REQUEST_ID -C {{revision}} -v
-      
+          ./codecov -P $GITHUB_PULL_REQUEST_ID -C {{revision}} -v     
   workspaces:
     - name: source
       emptyDir: {}
-    - name: basic-auth
-      secret:
-        secretName: "{{ git_auth_secret }}"
+
