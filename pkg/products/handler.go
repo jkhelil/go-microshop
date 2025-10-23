@@ -11,5 +11,9 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 		{ID: 2, Name: "Headphones", Price: 199.99},
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(products)
+	err := json.NewEncoder(w).Encode(products)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
