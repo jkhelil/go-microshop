@@ -123,12 +123,28 @@ spec:
                 value: "{{pull_request_number}}"
             workingDir: $(workspaces.source.path)
             script: |
-              ARCH=aarch64
+              #!/usr/bin/env bash
+              set -eux
+              ARCH=$(uname -m)
+              case $ARCH in
+                  x86_64)
+                      CODECOV_URL="https://uploader.codecov.io/v0.7.3/linux/codecov"
+                      ;;
+                  aarch64)
+                      CODECOV_URL="https://uploader.codecov.io/v0.7.3/aarch64/codecov"
+                      ;;
+                  *)
+                      echo "Unsupported architecture: $ARCH"
+                      exit 1
+                      ;;
+              esac
+
               git config --global --add safe.directory $(workspaces.source.path)
               git fetch -a --tags
-              curl -LOs https://uploader.codecov.io/v0.7.3/aarch64/codecov
+              curl -LOs $CODECOV_URL
               chmod +x ./codecov
-              ./codecov -P $GITHUB_PULL_REQUEST_ID -C {{revision}} -v 
+              ./codecov -P $GITHUB_PULL_REQUEST_ID -C {{revision}} -v
+
   workspaces:
     - name: source
       volumeClaimTemplate:
