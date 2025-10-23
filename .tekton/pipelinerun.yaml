@@ -2,7 +2,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  name: go-microshop
+  name: go-microshop-on-pull-request
   annotations:
     pipelinesascode.tekton.dev/on-event: "[pull_request, push]"
     pipelinesascode.tekton.dev/on-target-branch: "[main]"
@@ -23,18 +23,13 @@ spec:
       - name: revision
     workspaces:
       - name: source
-      - name: basic-auth
     tasks:
       - name: clone-repository
         params:
         - name: url
-          value: $(params.git-url)
+          value: $(params.repo_url)
         - name: revision
           value: $(params.revision)
-        - name: ociStorage
-          value: $(params.output-image).git
-        - name: ociArtifactExpiresAfter
-          value: $(params.image-expires-after)
         taskRef:
           params:
           - name: catalog
@@ -47,82 +42,114 @@ spec:
             value: "0.10.0"
           - name: kind
             value: task
-          resolver: bundles
+          resolver: hub
         workspaces:
-          - name: source
+          - name: output
             workspace: source
-          - name: basic-auth
-            workspace: basic-auth
       - name: build
-        image: golang:1.24
-        env:
-          - name: GOCACHE
-            value: $(workspaces.source.path)/go-build-cache/cache
-          - name: GOMODCACHE
-            value: $(workspaces.source.path)/go-build-cache/mod
-        workingDir: $(workspaces.source.path)
-        script: |
-          #!/usr/bin/env bash
-          set -eux
-          make build
+        runAfter:
+          - clone-repository
+        taskSpec:
+          steps:
+            - name: build
+              image: golang:1.24
+              workingDir: $(workspaces.source.path)
+              env:
+                - name: GOCACHE
+                  value: $(workspaces.source.path)/go-build-cache/cache
+                - name: GOMODCACHE
+                  value: $(workspaces.source.path)/go-build-cache/mod
+              script: |
+                #!/usr/bin/env bash
+                set -eux
+                make build
+          workspaces:
+            - name: source
+              workspace: source
       - name: golangci-lint
-        image: golangci/golangci-lint:latest
-        workingDir: $(workspaces.source.path)
-        env:
-          - name: GOCACHE
-            value: $(workspaces.source.path)/go-build-cache/cache
-          - name: GOMODCACHE
-            value: $(workspaces.source.path)/go-build-cache/mod
-          - name: GOLANGCILINT_CACHE
-            value: $(workspaces.source.path)/go-build-cache/golangci-cache
-        script: |
-          #!/usr/bin/env bash
-          set -eux
-          make lint-go
+        runAfter:
+          - build
+        taskSpec:
+          steps:
+            - name: golangci-lint
+              image: golangci/golangci-lint:latest
+              workingDir: $(workspaces.source.path)
+              env:
+                - name: GOCACHE
+                  value: $(workspaces.source.path)/go-build-cache/cache
+                - name: GOMODCACHE
+                  value: $(workspaces.source.path)/go-build-cache/mod
+                - name: GOLANGCILINT_CACHE
+                  value: $(workspaces.source.path)/go-build-cache/golangci-cache
+              script: |
+                #!/usr/bin/env bash
+                set -eux
+                make lint-go
+          workspaces:
+            - name: source
+              workspace: source
       - name: unittest
-        image: golang:1.24
-        env:
-          - name: GOCACHE
-            value: $(workspaces.source.path)/go-build-cache/cache
-          - name: GOMODCACHE
-            value: $(workspaces.source.path)/go-build-cache/mod
-        workingDir: $(workspaces.source.path)
-        script: |
-          #!/usr/bin/env bash
-          set -eux
-          git config --global --add safe.directory $(workspaces.source.path)
-          export GO_TEST_FLAGS="-v -race -coverprofile=coverage.txt -covermode=atomic"
-          make test
+        runAfter:
+          - golangci-lint
+        taskSpec:
+          steps:
+            - name: unittest
+              image: golang:1.24
+              workingDir: $(workspaces.source.path)
+              env:
+                - name: GOCACHE
+                  value: $(workspaces.source.path)/go-build-cache/cache
+                - name: GOMODCACHE
+                  value: $(workspaces.source.path)/go-build-cache/mod
+              script: |
+                #!/usr/bin/env bash
+                set -eux
+                git config --global --add safe.directory $(workspaces.source.path)
+                export GO_TEST_FLAGS="-v -race -coverprofile=coverage.txt -covermode=atomic"
+                make test
+          workspaces:
+            - name: source
+              workspace: source
       - name: coverage
-        image: golang:1.24
-        env:
-          - name: CODECOV_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: pipelines-as-code-codecov-token
-                key: token
-          - name: GOCACHE
-            value: $(workspaces.source.path)/go-build-cache/cache
-          - name: GOMODCACHE
-            value: $(workspaces.source.path)/go-build-cache/mod
-          - name: GITHUB_REPOSITORY
-            value: "{{repo_owner}}/{{repo_name}}"
-          - name: GITHUB_PULL_REQUEST_ID
-            value: "{{pull_request_number}}"
-        workingDir: $(workspaces.source.path)
-        script: |
-          #!/usr/bin/env bash
-          set -eux
-          ARCH=aarch64
-          git config --global --add safe.directory $(workspaces.source.path)
-          git fetch -a --tags
-          curl -LOs https://uploader.codecov.io/v0.7.3/aarch64/codecov
-          chmod +x ./codecov
-          ./codecov -P $GITHUB_PULL_REQUEST_ID -C {{revision}} -v
-      
+        runAfter:
+          - unittest
+        taskSpec:
+          steps:
+            - name: coverage
+              image: golang:1.24
+              workingDir: $(workspaces.source.path)
+              env:
+                - name: CODECOV_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: go-microshop-codecov
+                      key: token  
+                - name: GOCACHE
+                  value: $(workspaces.source.path)/go-build-cache/cache
+                - name: GOMODCACHE
+                  value: $(workspaces.source.path)/go-build-cache/mod
+                - name: GITHUB_REPOSITORY
+                  value: "{{repo_owner}}/{{repo_name}}"
+                - name: GITHUB_PULL_REQUEST_ID
+                  value: "{{pull_request_number}}"
+              script: |
+                ARCH=aarch64
+                git config --global --add safe.directory $(workspaces.source.path)
+                git fetch -a --tags
+                curl -LOs https://uploader.codecov.io/v0.7.3/aarch64/codecov
+                chmod +x ./codecov
+                ./codecov -P $GITHUB_PULL_REQUEST_ID -C {{revision}} -v
+          workspaces:
+            - name: source
+              workspace: source
   workspaces:
     - name: source
-      emptyDir: {}
-    - name: basic-auth
-      secret:
-        secretName: "{{ git_auth_secret }}"
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 1Gi
+
+
