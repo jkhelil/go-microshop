@@ -46,6 +46,8 @@ spec:
           - name: output
             workspace: source
       - name: build
+        runAfter:
+          - clone-repository
         taskSpec:
           steps:
           - name: build-step
@@ -61,6 +63,8 @@ spec:
               set -eux
               make build
       - name: golangci-lint
+        runAfter:
+          - build
         taskSpec:
           steps:
           - name: lint-step
@@ -78,6 +82,8 @@ spec:
               set -eux
               make lint-go
       - name: unittest
+        runAfter:
+          - golangci-lint
         taskSpec:
           steps:
           - name: test-step
@@ -95,6 +101,8 @@ spec:
               export GO_TEST_FLAGS="-v -race -coverprofile=coverage.txt -covermode=atomic"
               make test
       - name: coverage
+        runAfter:
+          - unittest
         taskSpec:
           steps:
           - name: coverage-step
